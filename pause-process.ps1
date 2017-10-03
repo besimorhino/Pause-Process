@@ -1,4 +1,4 @@
-# Pause/unpause a process. Just provide a PID, process name, or user
+# Pause/unpause a process. Just provide a PID, and optionally a duration
 # by Mick Douglas @BetterSafetyNet
 
 # License: Creative Commons Attribution
@@ -13,15 +13,12 @@
 # todos:
 # Easy
 # create better error logics
-# add help
+# make better help messages 
 
 # Mid-level
 # add logics to detect if debugger is attached
-# how to handle if someone wants to pause all exes of a specific name from a specific user?
-# (i'm inclined to think this is outside the bounds of this script... just use pipeline for this)
 # add input validation checks
 # - is ID an int?
-# - is ProcName/UserName legit?  IE: do we need input validation?  What about PS wild cards?
 
 # HARD!!
 # - make -Duration to use ScheduledJob instead of sleep
@@ -61,24 +58,20 @@ Import-Module .\pause-process.ps1
 Pause-Process -ID [PID]
 
 .EXAMPLE
-Pause-Process -ProcessName [program name]
-
-.EXAMPLE
-Pause-Process -UserName [user]
+Pause-Process -ID [PID] -Duration [seconds]
 
 .EXAMPLE
 UnPause-Process -ID [PID]
 
 .NOTES
 This script is under active development.  It has not been scientifically tested.
-It likely will cause system stability issues.  Do not use in production, until
-you are comfortable with how this works.
+It likely will cause system stability issues.  Until you are comfortable with 
+how this works... DO NOT USE IN PRODUCTION!
 
 .LINK
 https://infosecinnovations.com/Alpha-Testing
 
 #>
-
 
 
 
@@ -113,83 +106,50 @@ Register-NativeMethod "kernel32.dll" "int DebugActiveProcessStop(int PID)"
 Add-NativeMethods
 
 
-function ApplyDebug {
-
-    $PauseResult = [NativeMethods]::DebugActiveProcess($ID)
-
-    if ($PauseResult -eq $False) {
-        # An error occurred. Display any errors thrown
-        Write-Output ("Unable to pause process: $ID")
-
-    } else {
-        Write-Output ("Process $ID was paused")
-    }
-}
-
-
 function Pause-Process {
 
 [CmdletBinding()]
 
     Param (
+        [parameter(ValueFromPipelineByPropertyName=$True)]
         [int]$ID,
-        [string]$ProcessName,
-        [string]$UserName,
         [int]$Duration
     )
 
-    if ($ProcessName) {
-        #Gather all PIDs for the named process
-        $ProcList = Get-Process -name $ProcessName -EA SilentlyContinue
 
-        if ($ProcList) {
-            foreach ($ID in ($ProcList.ID)) {
-                ApplyDebug($ID)
-            }
-
-        } else {
-            Write-Output ("No processes were found matching: $ProcessName")
-        }
-
-    } elseIf ($UserName) {
-
-    $ProcList = Get-Process -IncludeUserName | Where-Object {$_.username -like "*$UserName*"}
-
-        if ($ProcList) {
-            foreach ($ID in ($ProcList.ID)) {
-                ApplyDebug($ID)
-            }
-
-        } else {
-            Write-Output ("No processes are running under target account: $UserName")
-        }
-
-    } elseIf ($ID) {
-        ApplyDebug($ID)
-
-    } else {
-        Write-Output ("Must use either the -ID, -ProcName, or -UserName switch.")
+    Begin {
+        # Test to see if this is a running process
+        # Do checks to see if we can pause this.
+        write-verbose ("you entered an ID of: $ID")
     }
 
-    # This is a hack. The better approach would be to use a ScheduledJob
-    # However, I've not been able to get the environment variables right. 
-    # This means that the extensions notably UnPause-Process isn't available.
-    # Any help in this area would be most welcomed.
 
-    if ($Duration) {
-        Sleep $Duration
-        if ($ProcList) {
-            foreach ($ID in ($ProcList.ID)) {
-                UnPause-Process($ID)
-            }
+    Process {
+        $PauseResult = [NativeMethods]::DebugActiveProcess($ID)
+    }
 
-        } elseIf ($ID) {
-            UnPause-Process($ID)
+
+    End {
+        # report out if user asked it
+        if ($PauseResult -eq $False) {
+            # An error occurred. Display any errors thrown
+            Write-Error ("Unable to pause process: $ID")
 
         } else {
-            Write-Output ("no paused procs?")
+            Write-Verbose ("Process $ID was paused")
         }
+
+        # This is a hack. The better approach would be to use a ScheduledJob
+        # However, I've not been able to get the environment variables right. 
+        # This means that the extensions notably UnPause-Process isn't available.
+        # Any help in this area would be most welcomed.
+
+        if ($Duration) {
+            Sleep $Duration
+            UnPause-Process $ID
+        } 
     }
+
 }
 
 
@@ -198,19 +158,27 @@ function UnPause-Process {
 [CmdletBinding()]
 
     Param (
-        [Parameter(Mandatory = $True, Position = 0)]
-        [ValidateNotNullOrEmpty()]
+        [parameter(ValueFromPipelineByPropertyName=$True)]
         [int]$ID
     )
 
-    # Attempt the unpause
-    $UnPauseResult = [NativeMethods]::DebugActiveProcessStop($ID)
+    Begin{
+        Write-Verbose ("Attempting to unpause PID: $ID")
+    }
 
-    if ($UnPauseResult -eq $False) {
-        # An error occurred. Display any errors thrown
-        Write-Output ("unable to unpause process $ID. Is it running or gone?")
 
-    } else {
-        Write-Output ("$ID was resumed")
+    Process {
+        # Attempt the unpause
+        $UnPauseResult = [NativeMethods]::DebugActiveProcessStop($ID)
+    }
+
+    End {
+        if ($UnPauseResult -eq $False) {
+            # An error occurred. Display any errors thrown
+            Write-Error ("unable to unpause process $ID. Is it running or gone?")
+    
+        } else {
+            Write-Verbose ("$ID was resumed")
+        }
     }
 }
