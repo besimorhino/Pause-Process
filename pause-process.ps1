@@ -1,4 +1,4 @@
-# Pause/unpause a process. Just provide a PID, and optionally a duration
+# Pause/unpause a process. Just provide a PID or a PID from the pipeline
 # by Mick Douglas @BetterSafetyNet
 
 # License: Creative Commons Attribution
@@ -21,7 +21,7 @@
 # - is ID an int?
 
 # HARD!!
-# - make -Duration to use ScheduledJob instead of sleep
+# - re-introduce the -Duration option & use ScheduledJob instead of sleep
 
 # Credits:
 # Shout out to Dave Kennedy for pointing me to this StackOverflow article.
@@ -30,10 +30,12 @@
 # Reference links:
 # calling Windows API from PowerShell
 # https://blog.dantup.com/2013/10/easily-calling-windows-apis-from-powershell/
+
 # https://blogs.technet.microsoft.com/heyscriptingguy/2013/06/25/use-powershell-to-interact-with-the-windows-api-part-1/
+
 # https://msdn.microsoft.com/en-us/library/windows/desktop/ms679295(v=vs.85).aspx
 
-# Majorly interesting article on how to use specific methods in a dll in PowerShell
+# Highly interesting article on how to use specific methods in a dll in PowerShell
 #https://social.technet.microsoft.com/Forums/ie/en-US/660c36b5-205c-47b6-8b98-aaa97d69a582/use-powershell-to-automate-powerpoint-document-repair-message-response?forum=winserverpowershell
 
 
@@ -41,8 +43,8 @@
 <#
 
 .SYNOPSIS
-This is a PowerShell script which allows one to issue Pause-Process or 
-UnPause-Process cmdlets.
+This is a PowerShell script which allows one to Pause-Process or 
+UnPause-Process.
 
 .DESCRIPTION
 This script will allow users to pause and unpause running commands.  This is 
@@ -58,15 +60,11 @@ Import-Module .\pause-process.ps1
 Pause-Process -ID [PID]
 
 .EXAMPLE
-Pause-Process -ID [PID] -Duration [seconds]
-
-.EXAMPLE
 UnPause-Process -ID [PID]
 
 .NOTES
-This script is under active development.  It has not been scientifically tested.
-It likely will cause system stability issues.  Until you are comfortable with 
-how this works... DO NOT USE IN PRODUCTION!
+This script is under active development.  
+Until you are comfortable with how this works... DO NOT USE IN PRODUCTION!
 
 .LINK
 https://infosecinnovations.com/Alpha-Testing
@@ -111,15 +109,14 @@ function Pause-Process {
 [CmdletBinding()]
 
     Param (
-        [parameter(ValueFromPipelineByPropertyName=$True)]
-        [int]$ID,
-        [int]$Duration
+        [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
+        [int]$ID
     )
 
 
     Begin {
         # Test to see if this is a running process
-        # Do checks to see if we can pause this.
+        # Future feature: Do checks to see if we can pause this process.
         write-verbose ("you entered an ID of: $ID")
     }
 
@@ -130,26 +127,14 @@ function Pause-Process {
 
 
     End {
-        # report out if user asked it
         if ($PauseResult -eq $False) {
-            # An error occurred. Display any errors thrown
             Write-Error ("Unable to pause process: $ID")
 
         } else {
             Write-Verbose ("Process $ID was paused")
         }
 
-        # This is a hack. The better approach would be to use a ScheduledJob
-        # However, I've not been able to get the environment variables right. 
-        # This means that the extensions notably UnPause-Process isn't available.
-        # Any help in this area would be most welcomed.
-
-        if ($Duration) {
-            Sleep $Duration
-            UnPause-Process $ID
-        } 
-    }
-
+    } 
 }
 
 
@@ -158,7 +143,7 @@ function UnPause-Process {
 [CmdletBinding()]
 
     Param (
-        [parameter(ValueFromPipelineByPropertyName=$True)]
+	    [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
         [int]$ID
     )
 
@@ -174,7 +159,6 @@ function UnPause-Process {
 
     End {
         if ($UnPauseResult -eq $False) {
-            # An error occurred. Display any errors thrown
             Write-Error ("unable to unpause process $ID. Is it running or gone?")
     
         } else {
