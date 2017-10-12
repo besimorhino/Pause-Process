@@ -110,6 +110,7 @@ function Pause-Process {
 
     Param (
         [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
+        [alias("OwningProcess")]
         [int]$ID
     )
 
@@ -144,6 +145,7 @@ function UnPause-Process {
 
     Param (
 	    [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
+        [alias("OwningProcess")]
         [int]$ID
     )
 
