@@ -45,7 +45,7 @@ While the examples below are given as PowerShell "one liners" they can absolutel
 Below are examples of how one could use it in the "real world"
 
 
-### Scenario 1:
+### Scenario 1: Specific Known PID
 You already know the PID of the process you want to pause.  (ex. process id 1337)
 
 To pause the process:
@@ -60,7 +60,7 @@ UnPause-Process -ID 1337
 NOTE: this is the only example of where we show UnPause-Process. Its use is identical to Pause-Process.
 
 
-### Scenario 2:
+### Scenario 2: All Instances of a Program
 You want to pause all running instances of a specific program. (ex. notepad.exe)
 
 To pause all notepad instances:
@@ -69,7 +69,7 @@ get-process -Name notepad | Pause-Process
 ```
 
 
-### Scenario 3:
+### Scenario 3: Specific User
 You want to pause all processes run by a specific user (ex bob)
 Caution: if you pause all processes run by you, there will almost certainly be adverse consequences.  Most often this results in a locked system where you cannot unpause to resume normal operation. A reboot fixes this issue.
 
@@ -78,6 +78,16 @@ To pause all processes run by Bob:
 Get-Process -IncludeUserName | where-object UserName -like "*bob*" | Pause-Process
 ```
 Note: using -IncludeUserName requires Admin rights.
+
+
+### Scenario 4: Network Connections
+To pause all processes that are connecting to a specific IP. For instance, you see interaction with a known command and control (c2) server.
+
+This is how you would pause executables affiliated with a TCP based connection to a specific IP
+
+```
+Get-NetTCPConnection | where RemoteAddress -eq [IP] | select OwningProcess | Pause-Process
+```
 
 
 ## Special Scenarios
