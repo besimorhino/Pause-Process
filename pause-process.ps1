@@ -13,7 +13,7 @@
 # todos:
 # Easy
 # create better error logics
-# make better help messages 
+# make better help messages
 
 # Mid-level
 # add logics to detect if debugger is attached
@@ -43,13 +43,13 @@
 <#
 
 .SYNOPSIS
-This is a PowerShell script which allows one to Pause-Process or 
+This is a PowerShell script which allows one to Pause-Process or
 UnPause-Process.
 
 .DESCRIPTION
-This script will allow users to pause and unpause running commands.  This is 
+This script will allow users to pause and unpause running commands.  This is
 accomplished by attaching a debugger to the selected process.  Removing the
-debugger allows the program to resume normal operation.  
+debugger allows the program to resume normal operation.
 
 Note: not all programs can be paused in this manner.
 
@@ -63,7 +63,7 @@ Pause-Process -ID [PID]
 UnPause-Process -ID [PID]
 
 .NOTES
-This script is under active development.  
+This script is under active development.
 Until you are comfortable with how this works... DO NOT USE IN PRODUCTION!
 
 .LINK
@@ -71,16 +71,12 @@ https://infosecinnovations.com/Alpha-Testing
 
 #>
 
-
-
 $script:nativeMethods = @();
-function Register-NativeMethod([string]$dll, [string]$methodSignature)
-{
+function Register-NativeMethod([string]$dll, [string]$methodSignature) {
     $script:nativeMethods += [PSCustomObject]@{ Dll = $dll; Signature = $methodSignature; }
 }
 
-function Add-NativeMethods()
-{
+function Add-NativeMethods() {
     $nativeMethodsCode = $script:nativeMethods | % { "
         [DllImport(`"$($_.Dll)`")]
         public static extern $($_.Signature);
@@ -95,25 +91,50 @@ function Add-NativeMethods()
 "@
 }
 
-
 # Add methods here
 Register-NativeMethod "kernel32.dll" "int DebugActiveProcess(int PID)"
 Register-NativeMethod "kernel32.dll" "int DebugActiveProcessStop(int PID)"
+Register-NativeMethod "kernel32.dll" "bool CheckRemoteDebuggerPresent(int hProcess, [MarshalAs(UnmanagedType.Bool)]ref bool isDebuggerPresent)"
 
 # This builds the class and registers them (you can only do this one-per-session, as the type cannot be unloaded?)
 Add-NativeMethods
 
-
-function Pause-Process {
-
-[CmdletBinding()]
-
+function Test-DebuggerPresent {
+    [CmdletBinding()]
     Param (
-        [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
+        [parameter(Mandatory = $True, ValueFromPipelineByPropertyName = $True)]
         [alias("OwningProcess")]
         [int]$ID
     )
 
+    Begin {
+        Write-Verbose ("Checking if debugger is present for PID: $ID")
+    }
+
+    Process {
+        $hProcess = (Get-Process -id $ID).Handle
+        $isDebuggerPresent = [IntPtr]::Zero
+        $null = [NativeMethods]::CheckRemoteDebuggerPresent($hProcess, [ref]$isDebuggerPresent)
+    }
+
+    End {
+        if ($isDebuggerPresent -eq $True) {
+            Write-Verbose "Debugger exists for process $ID"
+            $True
+        }
+        else {
+            Write-Verbose ("Debugger does not exist for $ID")
+            $false
+        }
+    }
+}
+function Pause-Process {
+    [CmdletBinding()]
+    Param (
+        [parameter(Mandatory = $True, ValueFromPipelineByPropertyName = $True)]
+        [alias("OwningProcess")]
+        [int]$ID
+    )
 
     Begin {
         # Test to see if this is a running process
@@ -121,49 +142,56 @@ function Pause-Process {
         write-verbose ("you entered an ID of: $ID")
     }
 
-
     Process {
-        $PauseResult = [NativeMethods]::DebugActiveProcess($ID)
+        if ((Test-DebuggerPresent -ID $id) -eq $false) {
+            $PauseResult = [NativeMethods]::DebugActiveProcess($ID)
+        }
+        else {
+            $PauseResult -eq $False
+            Write-Warning "Debugger already exists for process $ID"
+        }
     }
-
 
     End {
         if ($PauseResult -eq $False) {
             Write-Error ("Unable to pause process: $ID")
 
-        } else {
+        }
+        else {
             Write-Verbose ("Process $ID was paused")
         }
 
-    } 
+    }
 }
 
-
 function UnPause-Process {
-
-[CmdletBinding()]
-
+    [CmdletBinding()]
     Param (
-	    [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
+        [parameter(Mandatory = $True, ValueFromPipelineByPropertyName = $True)]
         [alias("OwningProcess")]
         [int]$ID
     )
 
-    Begin{
+    Begin {
         Write-Verbose ("Attempting to unpause PID: $ID")
     }
 
-
     Process {
         # Attempt the unpause
-        $UnPauseResult = [NativeMethods]::DebugActiveProcessStop($ID)
+        if ((Test-DebuggerPresent -ID $id) -eq $false) {
+            $UnPauseResult -eq $False
+            Write-Warning -Message "Process is not currently being debugged"
+        }
+        else {
+            $UnPauseResult = [NativeMethods]::DebugActiveProcessStop($ID)
+        }
     }
 
     End {
         if ($UnPauseResult -eq $False) {
             Write-Error ("unable to unpause process $ID. Is it running or gone?")
-    
-        } else {
+        }
+        else {
             Write-Verbose ("$ID was resumed")
         }
     }
