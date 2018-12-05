@@ -1,8 +1,8 @@
-# Pause/unpause a process. Just provide a PID or a PID from the pipeline
+﻿# Pause/unpause a process. Just provide a PID or a PID from the pipeline
 # by Mick Douglas @BetterSafetyNet
 
 # License: Creative Commons Attribution
-# https://creativecommons.org/licenses/by/4.0/
+# https://creativecommons.org/licenses/by/4.0
 
 # Warning:
 # This script will pause (and unpause) running programs.
@@ -13,14 +13,14 @@
 # todos:
 # Easy
 # create better error logics
-# make better help messages 
+# make better help messages
 
 # Mid-level
 # add logics to detect if debugger is attached
 # add input validation checks
 # - is ID an int?
 
-# HARD!!
+# HARD
 # - re-introduce the -Duration option & use ScheduledJob instead of sleep
 
 # Credits:
@@ -28,7 +28,7 @@
 # https://stackoverflow.com/questions/11010165/how-to-suspend-resume-a-process-in-windows
 
 # Reference links:
-# calling Windows API from PowerShell
+# calling Windows API from Powershell
 # https://blog.dantup.com/2013/10/easily-calling-windows-apis-from-powershell/
 
 # https://blogs.technet.microsoft.com/heyscriptingguy/2013/06/25/use-powershell-to-interact-with-the-windows-api-part-1/
@@ -36,20 +36,16 @@
 # https://msdn.microsoft.com/en-us/library/windows/desktop/ms679295(v=vs.85).aspx
 
 # Highly interesting article on how to use specific methods in a dll in PowerShell
-#https://social.technet.microsoft.com/Forums/ie/en-US/660c36b5-205c-47b6-8b98-aaa97d69a582/use-powershell-to-automate-powerpoint-document-repair-message-response?forum=winserverpowershell
-
+# https://social.technet.microsoft.com/Forums/ie/en-US/660c36b5-205c-47b6-8b98-aaa97d69a582/use-powershell-to-automate-powerpoint-document-repair-message-response?forum=winserverpowershell
 
 
 <#
 
 .SYNOPSIS
-This is a PowerShell script which allows one to Pause-Process or 
-UnPause-Process.
+This is a PowerShell script which allows one to Pause-Process or UnPause-Process.
 
 .DESCRIPTION
-This script will allow users to pause and unpause running commands.  This is 
-accomplished by attaching a debugger to the selected process.  Removing the
-debugger allows the program to resume normal operation.  
+This script will allow users to pause and unpause running commands. This is accomplished by attaching a debugger to the selected process. Removing the debugger allows the program to resume normal operation.
 
 Note: not all programs can be paused in this manner.
 
@@ -63,7 +59,7 @@ Pause-Process -ID [PID]
 UnPause-Process -ID [PID]
 
 .NOTES
-This script is under active development.  
+This script is under active development.
 Until you are comfortable with how this works... DO NOT USE IN PRODUCTION!
 
 .LINK
@@ -71,27 +67,25 @@ https://infosecinnovations.com/Alpha-Testing
 
 #>
 
-
-
-$script:nativeMethods = @();
+$Script:nativeMethods = @();
 function Register-NativeMethod([string]$dll, [string]$methodSignature)
 {
-    $script:nativeMethods += [PSCustomObject]@{ Dll = $dll; Signature = $methodSignature; }
+    $Script:nativeMethods += [PSCustomObject]@{ Dll = $dll; Signature = $methodSignature; }
 }
 
 function Add-NativeMethods()
 {
-    $nativeMethodsCode = $script:nativeMethods | % { "
+    $nativeMethodsCode = $Script:nativeMethods | % { "
         [DllImport(`"$($_.Dll)`")]
         public static extern $($_.Signature);
-    " }
+        " }
 
-    Add-Type @"
-        using System;
-        using System.Runtime.InteropServices;
-        public static class NativeMethods {
-            $nativeMethodsCode
-        }
+        Add-Type @"
+            using System;
+            using System.Runtime.InteropServices;
+            public static class NativeMethods {
+                $nativeMethodsCode
+            }
 "@
 }
 
@@ -110,59 +104,85 @@ function Pause-Process {
 
     Param (
         [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
-        [alias("OwningProcess")]
-        [int]$ID
-    )
+            [alias("OwningProcess")]
+            [int]$ID
+        )
 
+        Begin{
+            # Test to see if this is a running process
+            # Get-Process -ID $ID  <--Throws an error if the process isn't running
+            # Future feature: Do checks to see if we can pause this process.
+            Write-Verbose ("You entered an ID of: $ID")
 
-    Begin {
-        # Test to see if this is a running process
-        # Future feature: Do checks to see if we can pause this process.
-        write-verbose ("you entered an ID of: $ID")
-    }
+            if ($ID -le 0) {
+                $Host.UI.WriteErrorLine("ID needs to be a positive integer for this to work")
+                break
+            }
+            #Assign output to variable, check variable in if statement
+            #Variable null if privilege isn't present
+            $privy = whoami.exe /priv
+            $dbpriv = $privy -match "SeDebugPrivilege"
 
+            if (!$dbpriv) {
+            $Host.UI.WriteErrorLine("You do not have debugging privileges to pause any process")
+            break
+            }
 
-    Process {
-        $PauseResult = [NativeMethods]::DebugActiveProcess($ID)
-    }
-
-
-    End {
-        if ($PauseResult -eq $False) {
-            Write-Error ("Unable to pause process: $ID")
-
-        } else {
-            Write-Verbose ("Process $ID was paused")
         }
 
-    } 
-}
+        Process{
+            $PauseResult = [NativeMethods]::DebugActiveProcess($ID)
+        }
 
+        End{
+            if ($PauseResult -eq $False) {
+                $Host.UI.WriteErrorLine("Unable to pause process: $ID")
+               } else {
+                    Write-Verbose ("Process $ID was paused")
+                }
+            }
+}
 
 function UnPause-Process {
 
 [CmdletBinding()]
 
     Param (
-	    [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
+        [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
         [alias("OwningProcess")]
         [int]$ID
     )
 
     Begin{
         Write-Verbose ("Attempting to unpause PID: $ID")
+         # Test to see if this is a running process
+         # Get-Process -ID $ID  <--Throws an error if the process isn't running
+         # Future feature: Do checks to see if we can pause this process.
+         Write-Verbose ("You entered an ID of: $ID")
+
+         if ($ID -le 0) {
+             $Host.UI.WriteErrorLine("ID needs to be a positive integer for this to work")
+             break
+         }
+        
+         #Variable null if privilege isn't present
+         $privy = whoami.exe /priv
+         $dbpriv = $privy -match "SeDebugPrivilege"
+            
+         if (!$dbpriv) {
+            $Host.UI.WriteErrorLine("You do not have debugging privileges to unpause any process")
+            break
+         }
     }
 
-
-    Process {
-        # Attempt the unpause
+    Process{
+        #Attempt the unpause
         $UnPauseResult = [NativeMethods]::DebugActiveProcessStop($ID)
     }
 
-    End {
+    End{
         if ($UnPauseResult -eq $False) {
-            Write-Error ("unable to unpause process $ID. Is it running or gone?")
-    
+            $Host.UI.WriteErrorLine("Unable to unpause process $ID. Is it running or gone?")
         } else {
             Write-Verbose ("$ID was resumed")
         }
