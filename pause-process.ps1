@@ -1,5 +1,6 @@
 ﻿# Pause/unpause a process. Just provide a PID or a PID from the pipeline
 # by Mick Douglas @BetterSafetyNet
+# and Aaron Sawyer @InfoSecInnovations
 
 # License: Creative Commons Attribution
 # https://creativecommons.org/licenses/by/4.0
@@ -16,7 +17,6 @@
 # make better help messages
 
 # Mid-level
-# add logics to detect if debugger is attached
 # add input validation checks
 # - is ID an int?
 
@@ -67,36 +67,26 @@ https://infosecinnovations.com/Alpha-Testing
 
 #>
 
-$Script:nativeMethods = @();
-function Register-NativeMethod([string]$dll, [string]$methodSignature)
-{
-    $Script:nativeMethods += [PSCustomObject]@{ Dll = $dll; Signature = $methodSignature; }
-}
-
-function Add-NativeMethods()
-{
-    $nativeMethodsCode = $Script:nativeMethods | % { "
-        [DllImport(`"$($_.Dll)`")]
-        public static extern $($_.Signature);
-        " }
-
-        Add-Type @"
+Add-Type -TypeDefinition @"
             using System;
+            using System.Diagnostics;
+            using System.Security.Principal;
             using System.Runtime.InteropServices;
-            public static class NativeMethods {
-                $nativeMethodsCode
+
+            public static class Kernel32
+            {
+                [DllImport("kernel32.dll")]
+                public static extern bool CheckRemoteDebuggerPresent(
+                    IntPtr hProcess,
+                    out bool pbDebuggerPresent);
+
+                [DllImport("kernel32.dll")]
+                public static extern int DebugActiveProcess(int PID);
+
+                [DllImport("kernel32.dll")]
+                public static extern int DebugActiveProcessStop(int PID);
             }
 "@
-}
-
-
-# Add methods here
-Register-NativeMethod "kernel32.dll" "int DebugActiveProcess(int PID)"
-Register-NativeMethod "kernel32.dll" "int DebugActiveProcessStop(int PID)"
-
-# This builds the class and registers them (you can only do this one-per-session, as the type cannot be unloaded?)
-Add-NativeMethods
-
 
 function Pause-Process {
 
@@ -120,6 +110,7 @@ function Pause-Process {
             }
             #Assign output to variable, check variable in if statement
             #Variable null if privilege isn't present
+
             $privy = whoami.exe /priv
             $dbpriv = $privy -match "SeDebugPrivilege"
 
@@ -128,10 +119,17 @@ function Pause-Process {
             break
             }
 
+            $ProcHandle = (Get-Process -Id $ID).Handle
+            $DebuggerPresent = [IntPtr]::Zero
+            $CallResult = [Kernel32]::CheckRemoteDebuggerPresent($ProcHandle,[ref]$DebuggerPresent)
+                if ($DebuggerPresent) {
+                    $Host.UI.WriteErrorLine("There is already a debugger attached to this process")
+                    break
+                }
         }
 
         Process{
-            $PauseResult = [NativeMethods]::DebugActiveProcess($ID)
+            $PauseResult = [Kernel32]::DebugActiveProcess($ID)
         }
 
         End{
@@ -156,8 +154,11 @@ function UnPause-Process {
     Begin{
         Write-Verbose ("Attempting to unpause PID: $ID")
          # Test to see if this is a running process
-         # Get-Process -ID $ID  <--Throws an error if the process isn't running
+         # (Get-Process -ID $ID) should throw an error if the process isn't running
          # Future feature: Do checks to see if we can pause this process.
+         #try { Get-Process -ID $ID }
+         #catch { $Host.UI.WriteErrorLine("This process isn't running") }
+
          Write-Verbose ("You entered an ID of: $ID")
 
          if ($ID -le 0) {
@@ -166,6 +167,7 @@ function UnPause-Process {
          }
         
          #Variable null if privilege isn't present
+
          $privy = whoami.exe /priv
          $dbpriv = $privy -match "SeDebugPrivilege"
             
@@ -177,7 +179,7 @@ function UnPause-Process {
 
     Process{
         #Attempt the unpause
-        $UnPauseResult = [NativeMethods]::DebugActiveProcessStop($ID)
+        $UnPauseResult = [Kernel32]::DebugActiveProcessStop($ID)
     }
 
     End{
