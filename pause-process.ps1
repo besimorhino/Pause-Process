@@ -1,6 +1,6 @@
 # Pause/unpause a process. Just provide a PID or a PID from the pipeline
 # by Mick Douglas @BetterSafetyNet
-# and Aaron Sawyer @InfoSecInnovations
+# and Aaron Sawyer @CrashingStatic
 
 # License: Creative Commons Attribution
 # https://creativecommons.org/licenses/by/4.0
