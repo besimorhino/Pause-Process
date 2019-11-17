@@ -8,7 +8,7 @@ Windows PowerShell v 3+ (it may work on v 2, but no promise)
 
 ## Getting Started
 
-1) Download the pause-proces module in one of next ways
+### 1) Download the pause-proces module in one of next ways
 
 * Github Module Install:
 
@@ -28,7 +28,7 @@ Install-Module -Name Pause-Process
 iex('$module="pause-process.ps1";$user="besimorhino";$repo="Pause-Process";$folder="$pwd";(new-object net.webclient).DownloadFile("https://raw.githubusercontent.com/$user/$repo/master/$module","$folder\$module")')
 ```
 
-2) From a PowerShell prompt, load the module.
+### 2) From a PowerShell prompt, load the module.
 
 ```powershell
 Import-Module Pause-Process
