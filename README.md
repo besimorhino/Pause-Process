@@ -25,7 +25,7 @@ Install-Module -Name Pause-Process
 * Direct script download:
 
 ```powershell
-iex('$module="pause-process.ps1";$user="stadub";$repo="Pause-Process";$folder="$pwd";(new-object net.webclient).DownloadFile("https://raw.githubusercontent.com/$user/$repo/master/$module","$folder\$module")')
+iex('$module="pause-process.ps1";$user="besimorhino";$repo="Pause-Process";$folder="$pwd";(new-object net.webclient).DownloadFile("https://raw.githubusercontent.com/$user/$repo/master/$module","$folder\$module")')
 ```
 
 2) From a PowerShell prompt, load the module.
