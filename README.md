@@ -8,16 +8,41 @@ Windows PowerShell v 3+ (it may work on v 2, but no promise)
 
 ## Getting Started
 
-1) Download the pause-process.ps1 file.
+1) Download the pause-proces module in one of next ways
+
+* Github Module Install:
+
+```powershell
+iex ('$user="besimorhino";$repo="Pause-Process";'+(new-object net.webclient).DownloadString('https://raw.githubusercontent.com/PsModuleInstall/InstallFromGithub/master/install.ps1'))
+```
+
+* Powershell Gallery Installation:
+
+```powershell
+Install-Module -Name Pause-Process
+```
+
+* Direct script download:
+
+```powershell
+iex('$module="pause-process.ps1";$user="stadub";$repo="Pause-Process";$folder="$pwd";(new-object net.webclient).DownloadFile("https://raw.githubusercontent.com/$user/$repo/master/$module","$folder\$module")')
+```
+
 2) From a PowerShell prompt, load the module.
 
+```powershell
+Import-Module Pause-Process
 ```
+
+or if script download have been used:
+
+```powershell
 Import-Module .\pause-process.ps1
 ```
 
 Note: Depending on your system's configuration, you may need to modify your execution restriction policy. The easiest way to do this is as follows:
 
-```
+```powershell
 powershell -ep bypass
 ```
 
@@ -121,7 +146,6 @@ Here's my TODO list.  I'll work on them... but if you beat me to it, you'll get 
 * Make this tool work with PowerShell's ScheduleJob or ScheduleTask.  The problem I've always run into is making the script work in default PowerShell sessions.  Yes, I know you can permanently install a module.  Is there a way to avoid this?  Using sleep commands with a ";" command separator (see Special Scenario 1) feels... awkward.  (it totally works though!!)
  
 
-
 ## Help Requests:
 I sure could use your help! From code, to documentation, to testing, there's something you can do to help.  You, yes you! I need ** YOUR ** help!
 
@@ -129,7 +153,7 @@ I sure could use your help! From code, to documentation, to testing, there's som
 
 * Do you have a scenario I've not listed?  Is there something else I should cover?
 
-* What additional documentation is needed?   
+* What additional documentation is needed?
 
 * Are there other features you'd like to see?
 
