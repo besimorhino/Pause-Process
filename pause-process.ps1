@@ -88,7 +88,7 @@ Add-Type -TypeDefinition @"
             }
 "@
 
-function Pause-Process {
+function Suspend-Process {
 
 [CmdletBinding()]
 
@@ -140,13 +140,14 @@ function Pause-Process {
             }
 }
 
-function UnPause-Process {
+function Resume-Process {
 
 [CmdletBinding()]
 
     Param (
         [parameter(Mandatory=$True, ValueFromPipelineByPropertyName=$True)]
         [alias("OwningProcess")]
+        [ValidateScript( { Get-Process -ID $_ })] 
         [int]$ID
     )
 
