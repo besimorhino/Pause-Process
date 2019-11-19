@@ -69,7 +69,7 @@
     RootModule = "pause-process.ps1"
     
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-    FunctionsToExport = @('Pause-Process','UnPause-Process')
+    FunctionsToExport = @('Suspend-Process','Resume-Process')
     
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
     CmdletsToExport = @('')
