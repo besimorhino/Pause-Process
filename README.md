@@ -75,14 +75,14 @@ You already know the PID of the process you want to pause.  (ex. process id 1337
 
 To pause the process:
 ```
-Pause-Process -ID 1337
+Suspend-Process -ID 1337
 ```
 
 To unpause (resume) the process:
 ```
-UnPause-Process -ID 1337
+Resume-Process -ID 1337
 ```
-NOTE: this is the only example of where we show UnPause-Process. Its use is identical to Pause-Process.
+NOTE: this is the only example of where we show Resume-Process. Its use is identical to Suspend-Process.
 
 
 ### Scenario 2: All Instances of a Program
@@ -90,7 +90,7 @@ You want to pause all running instances of a specific program. (ex. notepad.exe)
 
 To pause all notepad instances:
 ```
-get-process -Name notepad | Pause-Process
+get-process -Name notepad | Suspend-Process
 ```
 
 
@@ -100,7 +100,7 @@ Caution: if you pause all processes run by you, there will almost certainly be a
 
 To pause all processes run by Bob:
 ```
-Get-Process -IncludeUserName | where-object UserName -like "*bob*" | Pause-Process
+Get-Process -IncludeUserName | where-object UserName -like "*bob*" | Suspend-Process
 ```
 Note: using -IncludeUserName requires Admin rights.
 
@@ -111,7 +111,7 @@ To pause all processes that are connecting to a specific IP. For instance, you s
 This is how you would pause executables affiliated with a TCP based connection to a specific IP
 
 ```
-Get-NetTCPConnection | where RemoteAddress -eq [IP] | select OwningProcess | Pause-Process
+Get-NetTCPConnection | where RemoteAddress -eq [IP] | select OwningProcess | Suspend-Process
 ```
 
 
@@ -123,7 +123,7 @@ Note: all of the pause/unpause examples above will work with these special cases
 You want to pause process ID 1337 for only 30 seconds, and then have it resume.
 
 ``` 
-Pause-Process -ID 1337; sleep 30; UnPause-Process 1337
+Suspend-Process -ID 1337; sleep 30; Resume-Process 1337
 ``` 
 
 
